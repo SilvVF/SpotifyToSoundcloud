@@ -17,6 +17,7 @@
         QueryClient,
         QueryClientProvider,
     } from "@sveltestack/svelte-query";
+    import Convert from "./routes/Convert.svelte";
 
     const queryClient = new QueryClient();
 
@@ -66,15 +67,25 @@
         RefreshAuthState().catch((e) => LogDebug(e));
     });
 
+    $effect(() => {
+        if (appState.soundcloud.authed && appState.spotify.authed) {
+            navigate("/home");
+        }
+    });
+
     setContext("app_state", appState);
 </script>
 
 <QueryClientProvider client={queryClient}>
     <main>
-        {#if appState.soundcloud.authed && appState.spotify.authed}
-            <Home></Home>
-        {:else}
-            <SignIn />
-        {/if}
+        <Router>
+            <Route path="/home" component={Home} />
+            <Route path="/signin" component={SignIn} />
+            <Route path="/convert/:id">
+                {#snippet children(params)}
+                    <Convert playlistId={params.id} />
+                {/snippet}
+            </Route>
+        </Router>
     </main>
 </QueryClientProvider>

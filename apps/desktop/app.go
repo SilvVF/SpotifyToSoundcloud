@@ -7,6 +7,7 @@ import (
 
 	"github.com/SilvVF/sptosc/pkg/api"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zmb3/spotify/v2"
 )
 
 // App struct
@@ -43,6 +44,7 @@ func (a *App) startup(ctx context.Context) {
 
 // domReady is called after front-end resources have been loaded
 func (a *App) domReady(ctx context.Context) {
+	a.RefreshAuthState()
 	go func() {
 		for {
 			if ctx.Err() != nil {
@@ -110,19 +112,13 @@ func (a *App) SpotifyAuthUrl() string {
 	return a.spotify.AuthUrl()
 }
 
-func (a *App) SpotifyPlaylists() ([]string, error) {
+func (a *App) SpotifyPlaylists() ([]spotify.SimplePlaylist, error) {
 	runtime.LogDebug(a.ctx, "getting playlists")
-	res, err := a.spotify.UserPlaylists(100, 0)
+	res, err := a.spotify.UserPlaylists(50, 0)
 	if err != nil {
 		runtime.LogDebug(a.ctx, err.Error())
-		return make([]string, 0), err
 	}
-	runtime.LogDebugf(a.ctx, "%d", res.Total)
-	strs := make([]string, len(res.Playlists))
-	for i, p := range res.Playlists {
-		strs[i] = p.Name
-	}
-	return strs, nil
+	return res.Playlists, nil
 }
 
 func (a *App) RefreshAuthState() {

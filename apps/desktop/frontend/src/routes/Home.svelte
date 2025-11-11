@@ -1,14 +1,14 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { useQuery } from "@sveltestack/svelte-query";
-    import { onMount } from "svelte";
+    import { Link } from "svelte5-router";
     import { SpotifyPlaylists } from "wailsjs/go/main/App";
-    import { LogDebug } from "wailsjs/runtime/runtime";
+    import { spotify } from "wailsjs/go/models";
 
-    let list = $state<string[]>([]);
     let result = useQuery({
         queryKey: ["playlists"],
-        queryFn: async () => await SpotifyPlaylists(),
+        queryFn: async () =>
+            (await SpotifyPlaylists()) as Array<spotify.SimplePlaylist>,
         placeholderData: [],
     });
 </script>
@@ -21,17 +21,20 @@
     {:else if $result.status === "error"}
         <span>Error: {$result.error}</span>
     {:else}
-        <div class="flex flex-col">
+        <div class="grid grid-cols-3 space-y-4 space-x-4">
             {#each $result.data as playlist}
-                <div class="text-md text-red-50">
-                    {playlist}
-                </div>
-            {/each}
-            <div>list</div>
-            {#each list as playlist}
-                <div class="text-md text-red-50">
-                    {playlist.name}
-                </div>
+                <Link to={"/convert/" + playlist.id}>
+                    <div class="flex flex-col">
+                        <img
+                            class="size-48"
+                            src={playlist.images[0].url}
+                            alt="none"
+                        />
+                        <div>
+                            {playlist.name}
+                        </div>
+                    </div>
+                </Link>
             {/each}
         </div>
         <div>{$result.isFetching ? "Background Updating..." : " "}</div>
