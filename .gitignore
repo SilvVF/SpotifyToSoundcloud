@@ -1,0 +1,5 @@
+/temp
+*.env
+/*/temp
+/*/store.json
+/*/link.txt
