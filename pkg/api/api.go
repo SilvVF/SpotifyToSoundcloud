@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/SilvVF/sptosc/pkg/api/internal/store"
 	"github.com/joho/godotenv"
@@ -17,12 +19,28 @@ const (
 )
 
 func init() {
-	err := godotenv.Load("C:\\Users\\DS\\dev\\SpotifyToSoundcloud\\pkg\\api\\api.env")
+	dir, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 
-	dir, err := os.Getwd()
+	fpath := filepath.Join(dir, "temp", "api.env")
+	f, err := os.Open(fpath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
+			_, err := os.Create(fpath)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			panic(err)
+		}
+	}
+	defer f.Close()
+
+	err = godotenv.Load(fpath)
+
 	if err != nil {
 		panic(err)
 	}
