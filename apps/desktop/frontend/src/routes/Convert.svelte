@@ -58,19 +58,22 @@
     const expanded = new SvelteSet<string>();
 
     function handleConfirmSelections() {
-        const ids = Object.entries(matches)
-            .map(([, { selected }]) => selected)
-            .filter((selected) => selected !== "");
+        const urns = Object.entries(matches)
+            .map(([, { selected, tracks }]) =>
+                tracks.find((track) => track.track.id === selected),
+            )
+            .filter((track) => track !== undefined)
+            .map((track) => track.track.urn);
 
         // title string, description string, sharing string, ids []string
         const data = $res.data;
-        if (data && ids.length > 0) {
+        if (data && urns.length > 0) {
             creatingPlaylist = true;
             CreateSoundCloudPlaylist(
                 data.playlist.title,
                 data.playlist.description,
                 "private",
-                ids,
+                urns,
             )
                 .then((created: any) => {
                     console.log(created);
@@ -234,6 +237,14 @@
                             Generate
                         {/if}
                     </Button>
+                      <Button class="w-fit" onclick={handleConfirmSelections}>
+                        {#if creatingPlaylist}
+                            <Spinner />
+                            Creating
+                        {:else}
+                            Create
+                        {/if}
+                    </Button>
                     {#if item?.status === "running"}
                         <span class="text-xl font-bold"
                             >{item.complete} / {item.total}</span
@@ -297,7 +308,7 @@
                                                     ? "selected"
                                                     : "no selection"}
                                             </Badge>
-                                        {:else}
+                                        {:else if item?.status === "running"}
                                             <Badge class="w-fit">
                                                 <Spinner />
                                                 Generating
