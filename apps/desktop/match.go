@@ -137,7 +137,7 @@ func findMatches(
 	sem := make(chan struct{}, 4)
 	m := sync.Mutex{}
 	wg := sync.WaitGroup{}
-	debounce := time.Millisecond * 50
+	debounce := time.Millisecond * 100
 
 	progress := atomic.Int32{}
 	sendProgress := func() {
