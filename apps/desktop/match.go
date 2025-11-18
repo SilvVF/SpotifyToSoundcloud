@@ -99,7 +99,7 @@ func (a *App) GetMatches(id string) (map[string]TracksWrapper, error) {
 
 	a.jobsLock.Unlock()
 
-	res := findMatches(id, p.Tracks.Tracks, a.soundCloud, job.ctx)
+	res := findMatches(id, p.tracks, a.soundCloud, job.ctx)
 	a.cachedResults[id] = res
 
 	// push results and remove job
@@ -127,7 +127,7 @@ func createQuery(track spotifyapi.FullTrack) string {
 
 func findMatches(
 	playlistId string,
-	tracks []spotifyapi.PlaylistTrack,
+	tracks []spotifyapi.FullTrack,
 	api *soundcloud.SoundCloudApi,
 	ctx context.Context,
 ) map[string]TracksWrapper {
@@ -137,7 +137,7 @@ func findMatches(
 	sem := make(chan struct{}, 4)
 	m := sync.Mutex{}
 	wg := sync.WaitGroup{}
-	debounce := time.Millisecond * 300
+	debounce := time.Millisecond * 50
 
 	progress := atomic.Int32{}
 	sendProgress := func() {
@@ -171,7 +171,7 @@ func findMatches(
 				<-sem
 			}()
 
-			query := createQuery(track.Track)
+			query := createQuery(track)
 			log.Println("searching for: ", query)
 
 			res, err := api.SearchTracks(query)
@@ -186,7 +186,7 @@ func findMatches(
 				return
 			}
 
-			scores := scoreResults(track.Track, *res)
+			scores := scoreResults(track, *res)
 
 			sorted := make([]soundcloud.Track, len(*res))
 			copy(sorted, *res)
@@ -196,6 +196,11 @@ func findMatches(
 			})
 			mapped := make([]ScoredTrack, len(sorted))
 			for i, track := range sorted {
+
+				score := scores[track.ID]
+				if math.IsNaN(score) || math.IsInf(score, 0) {
+					score = 0.0
+				}
 				mapped[i] = ScoredTrack{
 					Track: Track{
 						ID:    strconv.Itoa(track.ID),
@@ -205,16 +210,16 @@ func findMatches(
 							{Url: track.ArtworkURL},
 						},
 					},
-					Score: scores[track.ID],
+					Score: score,
 				}
 			}
 
 			m.Lock()
-			matched[track.Track.ID.String()] = TracksWrapper{
-				ForId:  string(track.Track.ID),
+			matched[track.ID.String()] = TracksWrapper{
+				ForId:  string(track.ID),
 				Tracks: mapped,
 			}
-			runtime.EventsEmit(ctx, MatchResultPrefix+playlistId, matched[track.Track.ID.String()])
+			runtime.EventsEmit(ctx, MatchResultPrefix+playlistId, matched[track.ID.String()])
 			m.Unlock()
 		})
 	}

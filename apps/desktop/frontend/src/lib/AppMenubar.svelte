@@ -17,6 +17,10 @@
     function handleGoBack() {
         window.history.back();
     }
+
+    function handleGoHome() {
+        navigate("/home")
+    }
 </script>
 
 <Menubar.Root>
@@ -24,6 +28,7 @@
         <Menubar.Trigger>File</Menubar.Trigger>
         <Menubar.Content>
             <Menubar.Item onclick={handleGoBack}>Back</Menubar.Item>
+            <Menubar.Item onclick={handleGoHome}>Home</Menubar.Item>
             <Menubar.Item onclick={handleSettingsSelected}>
                 Settings <Menubar.Shortcut>⌘Alt+S</Menubar.Shortcut>
             </Menubar.Item>

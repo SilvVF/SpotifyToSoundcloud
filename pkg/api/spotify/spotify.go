@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/SilvVF/sptosc/pkg/api/internal/store"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
@@ -102,37 +104,50 @@ type PlaylistWithTracks struct {
 	Tracks    []spotify.PlaylistTrack `json:"tracks"`
 }
 
-func (s *SpotifyApi) PlaylistItems(id string) (*spotify.FullPlaylist, error) {
+func (s *SpotifyApi) PlaylistItems(id string) (*spotify.FullPlaylist, []spotify.FullTrack, error) {
 	if s.client == nil {
-		return nil, ErrClientNotAuthenticated
+		return nil, nil, ErrClientNotAuthenticated
 	}
 
-	p, err := s.client.GetPlaylist(s.ctx, spotify.ID(id), spotify.Limit(100), spotify.Offset(0))
+	p, err := s.client.GetPlaylist(s.ctx, spotify.ID(id), spotify.Limit(50), spotify.Offset(0))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	for len(p.Tracks.Tracks) < int(p.Tracks.Total) {
-		next, err := s.client.GetPlaylist(
-			s.ctx,
-			spotify.ID(id),
-			spotify.Limit(int(p.Tracks.Limit)),
-			spotify.Offset(int(p.Tracks.Offset)),
-		)
-
-		if err != nil {
-			break
-		}
-
-		p.Tracks.Tracks = append(p.Tracks.Tracks, next.Tracks.Tracks...)
-		p.Tracks.Limit = next.Tracks.Limit
-		p.Tracks.Offset = next.Tracks.Offset
-		p.Tracks.Next = next.Tracks.Next
-		p.Tracks.Previous = next.Tracks.Previous
-		p.Tracks.Total = next.Tracks.Total
+	tracks := []spotify.FullTrack{}
+	for _, track := range p.Tracks.Tracks {
+		tracks = append(tracks, track.Track)
 	}
 
-	return p, nil
+	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
+
+	for offset := len(p.Tracks.Tracks); offset+1 < int(p.Tracks.Total); offset += 50 {
+		wg.Go(func() {
+			next, err := s.client.GetPlaylistItems(
+				s.ctx,
+				spotify.ID(id),
+				spotify.Limit(50),
+				spotify.Offset(offset),
+			)
+
+			if err != nil {
+				return
+			}
+
+			log.Printf("%v\n", next)
+
+			mutex.Lock()
+			for _, item := range next.Items {
+				tracks = append(tracks, *item.Track.Track)
+			}
+			mutex.Unlock()
+		})
+	}
+
+	wg.Wait()
+
+	return p, tracks, nil
 }
 
 func (s *SpotifyApi) UserPlaylists() (*spotify.SimplePlaylistPage, error) {
@@ -146,7 +161,6 @@ func (s *SpotifyApi) UserPlaylists() (*spotify.SimplePlaylistPage, error) {
 		return nil, err
 	}
 
-	i := 0
 	for len(p.Playlists) < int(p.Total) && p.Next != "" {
 		next, err := s.client.CurrentUsersPlaylists(
 			s.ctx,
@@ -162,10 +176,6 @@ func (s *SpotifyApi) UserPlaylists() (*spotify.SimplePlaylistPage, error) {
 		p.Offset = next.Offset
 		p.Total = next.Total
 		p.Playlists = append(p.Playlists, next.Playlists...)
-
-		if i == 10 {
-			break
-		}
 	}
 	return p, err
 }
@@ -179,10 +189,11 @@ func (s *SpotifyApi) completeAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	if st := r.FormValue("state"); st != s.state {
 		http.NotFound(w, r)
-		s.errCh <- fmt.Errorf("state mismatch: %s != %s\n", st, s.state)
+		s.errCh <- fmt.Errorf("state mismatch: %s != %s", st, s.state)
 		return
 	}
 
+	w.Write([]byte("Received client token go back to ap to continue"))
 	// use the token to get an authenticated client
 	client := spotify.New(s.auth.Client(r.Context(), tok))
 	s.ch <- client

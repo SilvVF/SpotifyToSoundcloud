@@ -8,7 +8,7 @@
         GetMatches,
         CreateSoundCloudPlaylist,
     } from "wailsjs/go/main/App";
-    import { getContext } from "svelte";
+    import { getContext, onMount } from "svelte";
     import { toast } from "svelte-sonner";
     import type { GenerationContext } from "src/types/types.svelte";
     import { main } from "wailsjs/go/models";
@@ -28,6 +28,16 @@
     const location = useLocation();
     const res = useQuery(["playlist", playlistId], async () => {
         const res = await SpotifyPlaylist(playlistId);
+
+        const seen = new Set<string>();
+        res.tracks = res.tracks.filter((track) => {
+            if (!seen.has(track.id)) {
+                seen.add(track.id);
+                return true;
+            }
+            return false;
+        });
+
         return res;
     });
 
@@ -134,63 +144,65 @@
         };
     });
 
-    async function handleGenerate() {
-        if (!fetchingMatches) {
-            fetchingMatches = true;
-            try {
-                const trackScores = (tracks: main.ScoredTrack[]) => {
-                    let min = 0;
-                    let max = 0;
-                    for (const track of tracks) {
-                        min = Math.min(track.score, min);
-                        max = Math.max(track.score, max);
-                    }
-                    return {
-                        min: min,
-                        max: max,
-                    };
+    const trackScores = (tracks: main.ScoredTrack[]) => {
+        let min = 0;
+        let max = 0;
+        for (const track of tracks) {
+            min = Math.min(track.score, min);
+            max = Math.max(track.score, max);
+        }
+        return {
+            min: min,
+            max: max,
+        };
+    };
+
+    const forTracks = $derived.by(() => {
+        const playlistTracks = $res.data?.tracks ?? [];
+        const forTracks = new Map<string, main.Track>();
+        for (const track of playlistTracks) {
+            forTracks.set(track.id, track);
+        }
+        return forTracks;
+    });
+
+    onMount(() => {
+        const unsub = EventsOn(
+            `match_result_${playlistId}`,
+            (data: main.TracksWrapper) => {
+                const { min, max } = trackScores(data.tracks);
+                matches[data.for_id] = {
+                    selected: data.tracks[0].track.id,
+                    minScore: min,
+                    maxScore: max,
+                    tracks: data.tracks,
+                    forTrack: forTracks.get(data.for_id),
                 };
+                matchUpdates += 1;
+            },
+        );
 
-                const playlistTracks = $res.data?.tracks ?? [];
-                const forTracks = new Map<string, main.Track>();
-                for (const track of playlistTracks) {
-                    forTracks.set(track.id, track);
-                }
+        return () => {
+            unsub();
+        };
+    });
 
-                const unsub = EventsOn(
-                    `match_result_${playlistId}`,
-                    (data: main.TracksWrapper) => {
-                        const { min, max } = trackScores(data.tracks);
-                        matches[data.for_id] = {
-                            selected: data.tracks[0].track.id,
-                            minScore: min,
-                            maxScore: max,
-                            tracks: data.tracks,
-                            forTrack: forTracks.get(data.for_id),
-                        };
-                        matchUpdates += 1;
-                    },
-                );
-
-                const matched = await GetMatches(playlistId);
-
-                unsub();
-
-                for (const [trackId, match] of Object.entries(matched)) {
-                    const { min, max } = trackScores(match.tracks);
-                    matches[trackId] = {
-                        selected: match.tracks[0].track.id,
-                        minScore: min,
-                        maxScore: max,
-                        tracks: match.tracks,
-                        forTrack: forTracks.get(trackId),
-                    };
-                    matchUpdates += 1;
-                }
-            } catch (e) {
-                toast.error(`failed to get matches err: ${e}`);
+    async function handleGenerate() {
+        try {
+            const matched = await GetMatches(playlistId);
+            for (const [trackId, match] of Object.entries(matched)) {
+                const { min, max } = trackScores(match.tracks);
+                matches[trackId] = {
+                    selected: match.tracks[0].track.id,
+                    minScore: min,
+                    maxScore: max,
+                    tracks: match.tracks,
+                    forTrack: forTracks.get(trackId),
+                };
             }
-            fetchingMatches = false;
+            matchUpdates += 1;
+        } catch (e) {
+            toast.error(`failed to get matches err: ${e}`);
         }
     }
 </script>
@@ -207,7 +219,7 @@
 
 {#snippet trackItem(track: main.Track | undefined)}
     <div class="flex items-center space-x-4 my-2">
-        <img class="size-12" src={track?.imgs[0].url} alt={track?.title} />
+        <img class="size-12" src={track?.imgs[0]?.url} alt={track?.title} />
         <div class="space-y-2 w-full">
             <div class="h-4 w-full font-semibold text-start">
                 {track?.title}
@@ -223,21 +235,21 @@
             <div class="flex flex-col mt-4 space-y-2 px-4">
                 <img
                     class="size-48 object-cover"
-                    src={$res.data.playlist.imgs[0].url}
+                    src={$res.data.playlist.imgs[0]?.url}
                     alt=""
                 />
                 <span class="font-semibold">{$res.data.playlist.title}</span>
                 <span class="text-muted">{$res.data.playlist.urn}</span>
                 <div class="flex flex-row items-center justify-between">
                     <Button class="w-fit" onclick={handleGenerate}>
-                        {#if item?.status === "running"}
+                        {#if fetchingMatches}
                             <Spinner />
                             Generating
                         {:else}
                             Generate
                         {/if}
                     </Button>
-                      <Button class="w-fit" onclick={handleConfirmSelections}>
+                    <Button class="w-fit" onclick={handleConfirmSelections}>
                         {#if creatingPlaylist}
                             <Spinner />
                             Creating
@@ -253,7 +265,7 @@
                 </div>
                 <Progress value={progress} max={100} class="w-full" />
             </div>
-            {#each $res.data.tracks as track}
+            {#each $res.data.tracks as track (track.id)}
                 <div
                     class={cn(
                         $currentAnchor === `match_${track.id}` ? "bg-card" : "",
@@ -270,7 +282,7 @@
                         <div class={cn("flex items-center space-x-4 my-4")}>
                             <img
                                 class="size-12"
-                                src={track.imgs[0].url}
+                                src={track.imgs[0]?.url}
                                 alt={track.title}
                             />
                             <div
@@ -379,11 +391,11 @@
                 </Empty.Content>
             </Empty.Root>
         {:else}
-            {#each Object.entries(matches) as [id, match]}
+            {#each Object.entries(matches) as [id, match] (match.forTrack)}
                 <div id={`match_${id}`} class="flex flex-col">
                     {@render trackItem(match.forTrack)}
                     <Separator />
-                    {#each match.tracks as track}
+                    {#each match.tracks as track (track.track.id)}
                         <button
                             type="button"
                             class={cn(

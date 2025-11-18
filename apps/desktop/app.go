@@ -12,6 +12,11 @@ import (
 	spotifyapi "github.com/zmb3/spotify/v2"
 )
 
+type CachedPlaylist struct {
+	tracks   []spotifyapi.FullTrack
+	playlist *spotifyapi.FullPlaylist
+}
+
 // App struct
 type App struct {
 	spotify         *spotify.SpotifyApi
@@ -19,7 +24,7 @@ type App struct {
 	ctx             context.Context
 	jobsLock        sync.Mutex
 	matchJobs       map[string]*Job
-	cachedPlaylists map[string]*spotifyapi.FullPlaylist
+	cachedPlaylists map[string]CachedPlaylist
 	cachedResults   map[string]map[string]TracksWrapper
 }
 
@@ -27,7 +32,7 @@ type App struct {
 func NewApp() *App {
 	return &App{
 		jobsLock:        sync.Mutex{},
-		cachedPlaylists: make(map[string]*spotifyapi.FullPlaylist),
+		cachedPlaylists: make(map[string]CachedPlaylist),
 		cachedResults:   make(map[string]map[string]TracksWrapper),
 		matchJobs:       make(map[string]*Job),
 	}
@@ -104,18 +109,21 @@ func (a *App) SpotifyAuthUrl() string {
 
 func (a *App) SpotifyPlaylist(id string) (*PlaylistWithTracks, error) {
 
-	if p, ok := a.cachedPlaylists[id]; ok && p != nil {
-		mapped := toPlaylistWithTracks(p)
+	if p, ok := a.cachedPlaylists[id]; ok && p.playlist != nil {
+		mapped := toPlaylistWithTracks(p.playlist, p.tracks)
 		return &mapped, nil
 	}
 
-	p, err := a.spotify.PlaylistItems(id)
+	p, tracks, err := a.spotify.PlaylistItems(id)
 	if err != nil {
 		delete(a.cachedPlaylists, id)
 	} else {
-		a.cachedPlaylists[id] = p
+		a.cachedPlaylists[id] = CachedPlaylist{
+			playlist: p,
+			tracks:   tracks,
+		}
 	}
-	mapped := toPlaylistWithTracks(p)
+	mapped := toPlaylistWithTracks(p, tracks)
 
 	return &mapped, err
 }

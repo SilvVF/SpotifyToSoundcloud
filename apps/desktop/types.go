@@ -67,19 +67,19 @@ func convertImgs(imgs []spotify.Image) []Img {
 	return arr
 }
 
-func toPlaylistWithTracks(sp *spotify.FullPlaylist) PlaylistWithTracks {
+func toPlaylistWithTracks(sp *spotify.FullPlaylist, tracks []spotify.FullTrack) PlaylistWithTracks {
 	if sp == nil {
 		return PlaylistWithTracks{}
 	}
 
-	convertTracks := func(tracks []spotify.PlaylistTrack) []Track {
+	convertTracks := func(tracks []spotify.FullTrack) []Track {
 		arr := make([]Track, len(tracks))
 		for i, track := range tracks {
 			arr[i] = Track{
-				ID:    track.Track.ID.String(),
-				Urn:   string(track.Track.URI),
-				Title: track.Track.Name,
-				Imgs:  convertImgs(track.Track.Album.Images),
+				ID:    track.ID.String(),
+				Urn:   string(track.URI),
+				Title: track.Name,
+				Imgs:  convertImgs(track.Album.Images),
 			}
 		}
 		return arr
@@ -93,6 +93,6 @@ func toPlaylistWithTracks(sp *spotify.FullPlaylist) PlaylistWithTracks {
 			Description: sp.Description,
 			Imgs:        convertImgs(sp.Images),
 		},
-		Tracks: convertTracks(sp.Tracks.Tracks),
+		Tracks: convertTracks(tracks),
 	}
 }

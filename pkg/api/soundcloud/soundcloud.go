@@ -165,5 +165,7 @@ func (s *SoundCloudApi) completeAuth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	w.Write([]byte("Received client token go back to ap to continue"))
 	s.ch <- s.newClient(token, s.ctx)
 }
