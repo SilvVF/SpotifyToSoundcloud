@@ -14,6 +14,10 @@ export function GetMatches(arg1) {
   return window['go']['main']['App']['GetMatches'](arg1);
 }
 
+export function GetStreams(arg1) {
+  return window['go']['main']['App']['GetStreams'](arg1);
+}
+
 export function RefreshAuthState() {
   return window['go']['main']['App']['RefreshAuthState']();
 }

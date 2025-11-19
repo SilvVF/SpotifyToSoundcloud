@@ -209,6 +209,8 @@ func findMatches(
 						Imgs: []Img{
 							{Url: track.ArtworkURL},
 						},
+						PreviewUrl: track.StreamURL,
+						DurationMs: track.Duration,
 					},
 					Score: score,
 				}

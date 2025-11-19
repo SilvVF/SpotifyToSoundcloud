@@ -29,32 +29,6 @@ export type AuthEvent = {
   ok: boolean;
 };
 
-export type Img = {
-  H: number;
-  W: number;
-  Url: string;
-};
-
-export type Track = {
-  id: string;
-  urn: string;
-  title: string;
-  imgs: Img[];
-};
-
-export type Playlist = {
-  id: string;
-  urn: string;
-  title: string;
-  description: any;
-  imgs: Img[];
-};
-
-export type PlaylistWithTracks = {
-  playlist: Playlist;
-  tracks: Track[];
-};
-
 export type MatchProgress = {
   forId: string;
   total: number;

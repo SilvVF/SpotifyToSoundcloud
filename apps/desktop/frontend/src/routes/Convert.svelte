@@ -23,6 +23,7 @@
     import Separator from "$lib/components/ui/separator/separator.svelte";
     import { navigate, useLocation } from "svelte5-router";
     import { derived } from "svelte/store";
+    import AudioPreview from "$lib/AudioPreview.svelte";
 
     const { playlistId }: { playlistId: string } = $props();
     const location = useLocation();
@@ -407,8 +408,9 @@
                             onclick={() =>
                                 handleMatchSelected(id, track.track.id)}
                         >
-                            <div class="ms-16">
+                            <div class="ms-16 flex flex-row">
                                 {@render trackItem(track.track)}
+                                <AudioPreview track={track.track} />
                             </div>
                         </button>
                     {/each}

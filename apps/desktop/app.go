@@ -151,3 +151,7 @@ func (a *App) RefreshAuthState() {
 	a.spotify.CheckAuth()
 	a.soundCloud.CheckAuth()
 }
+
+func (a *App) GetStreams(urn string) (*soundcloud.AuthorizedStream, error) {
+	return a.soundCloud.GetStreams(urn)
+}

@@ -26,10 +26,12 @@ type Img struct {
 }
 
 type Track struct {
-	ID    string `json:"id"`
-	Urn   string `json:"urn"`
-	Title string `json:"title"`
-	Imgs  []Img  `json:"imgs"`
+	ID         string `json:"id"`
+	Urn        string `json:"urn"`
+	Title      string `json:"title"`
+	Imgs       []Img  `json:"imgs"`
+	PreviewUrl string `json:"previewUrl"`
+	DurationMs int    `json:"durationMs"`
 }
 
 type Playlist struct {
@@ -76,10 +78,12 @@ func toPlaylistWithTracks(sp *spotify.FullPlaylist, tracks []spotify.FullTrack) 
 		arr := make([]Track, len(tracks))
 		for i, track := range tracks {
 			arr[i] = Track{
-				ID:    track.ID.String(),
-				Urn:   string(track.URI),
-				Title: track.Name,
-				Imgs:  convertImgs(track.Album.Images),
+				ID:         track.ID.String(),
+				Urn:        string(track.URI),
+				Title:      track.Name,
+				Imgs:       convertImgs(track.Album.Images),
+				PreviewUrl: track.PreviewURL,
+				DurationMs: int(track.TimeDuration().Milliseconds()),
 			}
 		}
 		return arr

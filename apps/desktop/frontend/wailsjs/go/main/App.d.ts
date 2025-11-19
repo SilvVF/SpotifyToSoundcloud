@@ -9,6 +9,8 @@ export function CreateSoundCloudPlaylist(arg1:string,arg2:string,arg3:string,arg
 
 export function GetMatches(arg1:string):Promise<Record<string, main.TracksWrapper>>;
 
+export function GetStreams(arg1:string):Promise<soundcloud.AuthorizedStream>;
+
 export function RefreshAuthState():Promise<void>;
 
 export function ScoredTrackBind():Promise<main.ScoredTrack>;
