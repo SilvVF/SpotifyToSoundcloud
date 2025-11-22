@@ -37,30 +37,28 @@ func Create() error {
 	f, err := os.Open(fpath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			// Create the file if it doesn't exist
 			_, err := os.Create(fpath)
-			return err // No need for f.Close() here since we are creating a new file.
+			return err
 		}
-		return err // Return if there is another error opening the file
+		return err
 	}
-	defer f.Close() // Ensure the file gets closed after reading
+	defer f.Close()
 
 	b, err := io.ReadAll(f)
 	if err != nil {
 		log.Println("Error reading file:", err)
-		b = []byte("{}") // Set to an empty JSON object as default.
+		b = []byte("{}")
 	}
 
 	var st Store
 	if err := json.Unmarshal(b, &st); err != nil {
 		log.Println("Error unmarshaling JSON:", err)
-		b, err = json.Marshal(Store{}) // Default to an empty store
+		b, err = json.Marshal(Store{})
 		if err != nil {
-			return err // Return the error instead of writing on failure
+			return err
 		}
-		// Write default store to the file
 		if err := os.WriteFile(fpath, b, os.ModePerm); err != nil {
-			return err // Return the error
+			return err
 		}
 	}
 	return nil

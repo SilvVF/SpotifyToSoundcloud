@@ -2,8 +2,6 @@ package soundcloud
 
 import (
 	"log"
-	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,21 +11,8 @@ import (
 func TestSoundCloud(t *testing.T) {
 
 	api := New(t.Context())
-
-	api.Register()
-	go func() {
-		err := http.ListenAndServe(":8080", nil)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
-
-	fp := filepath.Clean("C:\\Users\\DS\\dev\\SpotifyToSoundcloud\\apps\\desktop\\temp")
+	fp := filepath.Clean("C:\\Users\\DS\\dev\\SpotifyToSoundcloud\\apps\\desktop\\build\\bin\\temp")
 	store.Initialize(filepath.Dir(fp))
-
-	f, _ := os.Create(filepath.Join(fp, "link.txt"))
-	f.WriteString(api.AuthUrl())
-	f.Close()
 
 	api.CheckAuth()
 
@@ -36,9 +21,13 @@ func TestSoundCloud(t *testing.T) {
 		t.Error(err)
 	}
 
-	res, err := c.SearchTracks("mirror")
+	res, err := c.GetStreamUrls("https://api.soundcloud.com/tracks/soundcloud:tracks:1835023461/streams")
+	if err != nil {
+		t.Error("failed to get urls", err)
+		t.FailNow()
+	}
 
-	log.Printf("%v\n", res)
+	log.Println(res)
 
-	t.Fail()
+	t.FailNow()
 }

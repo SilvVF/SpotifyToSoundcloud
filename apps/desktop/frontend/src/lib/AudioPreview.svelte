@@ -15,7 +15,16 @@
 
     let loadState = $state<LoadState>("idle");
     let audioEl = $state<HTMLAudioElement | undefined>(undefined);
-    let closed = $state(false)
+    let closed = $state(false);
+    const audioLevelKey = "audio_level";
+    let audioLevel = Number(localStorage.getItem(audioLevelKey) ?? 0.6);
+
+    $effect(() => {
+        if (!audioEl) return;
+        audioEl.addEventListener("volumechange", () => {
+            localStorage.setItem(audioLevelKey, `${audioEl?.volume ?? 0.6}`);
+        });
+    });
 
     async function fetchAudioWithHeaders(
         url: string,
@@ -106,9 +115,9 @@
             onclick={() => {
                 closed = !closed;
                 if (closed) {
-                    audioEl?.pause()
+                    audioEl?.pause();
                 } else {
-                    audioEl?.play()
+                    audioEl?.play();
                 }
             }}
         >
@@ -121,6 +130,7 @@
     {/if}
     <audio
         bind:this={audioEl}
+        volume={audioLevel}
         controls
         class={loadState === "done"
             ? closed

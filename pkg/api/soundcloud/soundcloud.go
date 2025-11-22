@@ -51,6 +51,14 @@ func (s *SoundCloudApi) newClient(token *oauth2.Token, ctx context.Context) *Sou
 	}
 }
 
+func (s *SoundCloudApi) GetStreams(urn string) (*AuthorizedStream, error) {
+	if s.client == nil {
+		return nil, ErrClientNotAuthenticated
+	}
+
+	return s.client.GetStreamUrls(urn)
+}
+
 func (s *SoundCloudApi) SearchTracks(query string) (*TracksPage, error) {
 
 	if s.client == nil {
